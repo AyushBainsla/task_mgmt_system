@@ -6,6 +6,8 @@ const {
     deleteTask,
     assignTask,
     viewAssignedTasks,
+    getTaskAnalytics,
+    getUserTaskStatistics
 } = require('../controllers/taskController');
 
 const router = express.Router();
@@ -19,5 +21,8 @@ router.delete('/:id', deleteTask);
 // Task Assignment
 router.post('/assign', assignTask);
 router.get('/assigned', viewAssignedTasks);
+
+router.get('/analytics', getTaskAnalytics);
+router.get('/analytics/:userId', getUserTaskStatistics);
 
 module.exports = router;
