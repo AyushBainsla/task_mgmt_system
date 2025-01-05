@@ -4,6 +4,10 @@ const createTask = async (req, res) => {
     const { title, description, dueDate, priority } = req.body;
 
     try {
+        if (!title || !dueDate || !priority) {
+            return res.status(400).json({ message: 'Title, dueDate, and priority are required fields' });
+        }
+
         const task = new Task({
             title,
             description,
@@ -13,12 +17,14 @@ const createTask = async (req, res) => {
         });
 
         await task.save();
-        // Emit event for real-time updates
+
         const io = req.app.get('io');
         io.emit('taskCreated', task);
-        res.status(200).json({ message: 'Task created successfully', task });
+
+        res.status(201).json({ message: 'Task created successfully', task });
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        console.error('Error creating task:', err);
+        res.status(500).json({ message: 'Failed to create task', error: err.message });
     }
 };
 
@@ -27,33 +33,32 @@ const getTasks = async (req, res) => {
         const { status, priority, due_date, search } = req.query;
         const query = {};
 
-        // Apply filters
         if (status) query.status = status;
         if (priority) query.priority = priority;
-        if (due_date) query.due_date = { $lte: new Date(due_date) };
-        if (search) query.name = { $regex: search, $options: 'i' };
+        if (due_date) query.dueDate = { $lte: new Date(due_date) };
+        if (search) query.title = { $regex: search, $options: 'i' };
 
         let tasks;
-
         if (req.hasRole('Admin')) {
-            // Admin can see all tasks
             tasks = await Task.find(query);
         } else if (req.hasRole('Manager')) {
-            // Manager can see tasks assigned to their team members
             const teamMembers = await User.find({ manager: req.user._id }).select('_id');
             const teamMemberIds = teamMembers.map((member) => member._id);
             tasks = await Task.find({ ...query, assignedTo: { $in: teamMemberIds } });
         } else {
-            // Regular users can see only their tasks
             tasks = await Task.find({ ...query, assignedTo: req.user._id });
+        }
+
+        if (!tasks || tasks.length === 0) {
+            return res.status(404).json({ message: 'No tasks found' });
         }
 
         res.status(200).json(tasks);
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        console.error('Error fetching tasks:', err);
+        res.status(500).json({ message: 'Failed to fetch tasks', error: err.message });
     }
 };
-
 
 const updateTask = async (req, res) => {
     const { id } = req.params;
@@ -68,13 +73,13 @@ const updateTask = async (req, res) => {
 
         if (!task) return res.status(404).json({ message: 'Task not found' });
 
-        // Emit event for task updates
         const io = req.app.get('io');
         io.emit('taskUpdated', task);
 
-        res.status(200).json(task);
+        res.status(200).json({ message: 'Task updated successfully', task });
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        console.error('Error updating task:', err);
+        res.status(500).json({ message: 'Failed to update task', error: err.message });
     }
 };
 
@@ -88,7 +93,8 @@ const deleteTask = async (req, res) => {
 
         res.status(200).json({ message: 'Task deleted successfully' });
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        console.error('Error deleting task:', err);
+        res.status(500).json({ message: 'Failed to delete task', error: err.message });
     }
 };
 
@@ -96,6 +102,10 @@ const assignTask = async (req, res) => {
     const { taskId, userId } = req.body;
 
     try {
+        if (!taskId || !userId) {
+            return res.status(400).json({ message: 'Task ID and User ID are required' });
+        }
+
         const task = await Task.findByIdAndUpdate(
             taskId,
             { assignedTo: userId },
@@ -106,16 +116,23 @@ const assignTask = async (req, res) => {
 
         res.status(200).json({ message: 'Task assigned successfully', task });
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        console.error('Error assigning task:', err);
+        res.status(500).json({ message: 'Failed to assign task', error: err.message });
     }
 };
 
 const viewAssignedTasks = async (req, res) => {
     try {
         const tasks = await Task.find({ assignedTo: req.user._id });
+
+        if (!tasks || tasks.length === 0) {
+            return res.status(404).json({ message: 'No assigned tasks found' });
+        }
+
         res.status(200).json(tasks);
     } catch (err) {
-        res.status(400).json({ message: err.message });
+        console.error('Error fetching assigned tasks:', err);
+        res.status(500).json({ message: 'Failed to fetch assigned tasks', error: err.message });
     }
 };
 
@@ -123,49 +140,46 @@ const getTaskAnalytics = async (req, res) => {
     try {
         const completedTasks = await Task.countDocuments({ status: 'Completed' });
         const pendingTasks = await Task.countDocuments({ status: 'Pending' });
-        const overdueTasks = await Task.countDocuments({ 
+        const overdueTasks = await Task.countDocuments({
             status: { $ne: 'Completed' },
             dueDate: { $lt: new Date() }
         });
 
-        res.json({
-            completedTasks,
-            pendingTasks,
-            overdueTasks,
-        });
+        res.status(200).json({ completedTasks, pendingTasks, overdueTasks });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        console.error('Error fetching task analytics:', err);
+        res.status(500).json({ message: 'Failed to fetch task analytics', error: err.message });
     }
 };
 
 const getUserTaskStatistics = async (req, res) => {
-    try {
-        const { userId } = req.params;
+    const { userId } = req.params;
 
-        const completedTasks = await Task.countDocuments({ 
-            createdBy: userId, 
-            status: 'Completed' 
-        });
-        const pendingTasks = await Task.countDocuments({ 
-            createdBy: userId, 
-            status: 'Pending' 
-        });
-        const overdueTasks = await Task.countDocuments({ 
+    try {
+        if (!userId) return res.status(400).json({ message: 'User ID is required' });
+
+        const completedTasks = await Task.countDocuments({ createdBy: userId, status: 'Completed' });
+        const pendingTasks = await Task.countDocuments({ createdBy: userId, status: 'Pending' });
+        const overdueTasks = await Task.countDocuments({
             createdBy: userId,
             status: { $ne: 'Completed' },
             dueDate: { $lt: new Date() }
         });
 
-        res.json({
-            userId,
-            completedTasks,
-            pendingTasks,
-            overdueTasks,
-        });
+        res.status(200).json({ userId, completedTasks, pendingTasks, overdueTasks });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        console.error('Error fetching user task statistics:', err);
+        res.status(500).json({ message: 'Failed to fetch user task statistics', error: err.message });
     }
 };
 
-
-module.exports = { createTask, getTasks, updateTask, deleteTask, assignTask, viewAssignedTasks, getTaskAnalytics, getUserTaskStatistics};
+module.exports = {
+    createTask,
+    getTasks,
+    updateTask,
+    deleteTask,
+    assignTask,
+    viewAssignedTasks,
+    getTaskAnalytics,
+    getUserTaskStatistics
+};
