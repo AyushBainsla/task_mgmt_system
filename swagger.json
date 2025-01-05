@@ -1,0 +1,454 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Task Management API",
+    "version": "1.0.0",
+    "description": "API documentation for Task Management system"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000"
+    }
+  ],
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "description": "Register a user with a username, email, password, and optional role.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User registered successfully."
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Log in a user",
+        "description": "Authenticate user with email and password.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful."
+          },
+          "400": {
+            "description": "Invalid credentials."
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "summary": "Log out a user",
+        "description": "Log out an authenticated user and invalidate their session.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logout successful."
+          },
+          "401": {
+            "description": "Unauthorized, user not authenticated."
+          }
+        }
+      }
+    },
+    "/api/v1/profiles": {
+      "get": {
+        "summary": "Get user profiles",
+        "description": "Retrieve a list of user profiles. Requires authentication and role-based access.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved profiles."
+          },
+          "403": {
+            "description": "Forbidden, insufficient permissions."
+          }
+        }
+      }
+    },
+    "/api/v1/update/profile": {
+      "put": {
+        "summary": "Update user profile",
+        "description": "Update the profile of an authenticated user.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "bio": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully."
+          },
+          "400": {
+            "description": "Bad request, invalid input."
+          }
+        }
+      }
+    },
+    "/api/v1/{id}/assign-manager": {
+      "put": {
+        "summary": "Assign manager to a user",
+        "description": "Assign a manager to a specific user by their ID.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "User ID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "managerId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Manager assigned successfully."
+          },
+          "404": {
+            "description": "User not found."
+          }
+        }
+      }
+    },
+    "/api/v1/{id}/team-members": {
+      "get": {
+        "summary": "Get team members",
+        "description": "Retrieve the list of team members under a specific user.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "User ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved team members."
+          },
+          "404": {
+            "description": "User or team members not found."
+          }
+        }
+      }
+    },
+    "/api/v1/tasks": {
+      "post": {
+        "summary": "Create a task",
+        "description": "Create a new task in the system.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "dueDate": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "title",
+                  "description"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Task created successfully."
+          },
+          "400": {
+            "description": "Bad request, invalid input."
+          }
+        }
+      },
+      "get": {
+        "summary": "Get cached tasks",
+        "description": "Retrieve cached tasks with 60-second caching via Redis.",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved tasks from cache or database."
+          },
+          "500": {
+            "description": "Server error."
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{id}": {
+      "put": {
+        "summary": "Update a task",
+        "description": "Update the details of a task by its ID.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Task ID."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "dueDate": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task updated successfully."
+          },
+          "404": {
+            "description": "Task not found."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a task",
+        "description": "Delete a task by its ID.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Task ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task deleted successfully."
+          },
+          "404": {
+            "description": "Task not found."
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/assign": {
+      "post": {
+        "summary": "Assign a task",
+        "description": "Assign a task to a specific user.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "taskId": {
+                    "type": "string"
+                  },
+                  "userId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "taskId",
+                  "userId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task assigned successfully."
+          },
+          "404": {
+            "description": "Task or user not found."
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/assigned": {
+      "get": {
+        "summary": "View assigned tasks",
+        "description": "Retrieve all tasks assigned to the current user.",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved assigned tasks."
+          },
+          "404": {
+            "description": "No assigned tasks found."
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/analytics": {
+      "get": {
+        "summary": "Get task analytics",
+        "description": "Retrieve overall analytics for tasks.",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved task analytics."
+          },
+          "500": {
+            "description": "Server error."
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/analytics/{userId}": {
+      "get": {
+        "summary": "Get user task statistics",
+        "description": "Retrieve task statistics for a specific user.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "User ID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved user task statistics."
+          },
+          "404": {
+            "description": "User or statistics not found."
+          }
+        }
+      }
+    }
+  },
+  "components": {},
+  "tags": []
+}

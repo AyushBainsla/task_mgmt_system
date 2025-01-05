@@ -11,6 +11,8 @@ const { roleBasedAccessControl } = require('./middlewares/rbacMiddleware');
 const redis = require('redis');
 const redisClient = redis.createClient();
 const rateLimit = require('express-rate-limit');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger');
 
 dotenv.config();
 
@@ -50,6 +52,11 @@ require('./connection/connection');
 // Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/tasks', authenticateJWT, roleBasedAccessControl, taskRoutes);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+const fs = require('fs');
+fs.writeFileSync('./swagger.json', JSON.stringify(swaggerSpec, null, 2));
+
 
 app.use((req, res) => {
     res.status(404).json({ message: 'Route not found' });
