@@ -24,16 +24,28 @@ const createTask = async (req, res) => {
 
 const getTasks = async (req, res) => {
     try {
+        const { status, priority, due_date, search } = req.query;
+        const query = {};
+
+        // Apply filters
+        if (status) query.status = status;
+        if (priority) query.priority = priority;
+        if (due_date) query.due_date = { $lte: new Date(due_date) };
+        if (search) query.name = { $regex: search, $options: 'i' };
+
         let tasks;
 
         if (req.hasRole('Admin')) {
-            tasks = await Task.find({});
+            // Admin can see all tasks
+            tasks = await Task.find(query);
         } else if (req.hasRole('Manager')) {
+            // Manager can see tasks assigned to their team members
             const teamMembers = await User.find({ manager: req.user._id }).select('_id');
             const teamMemberIds = teamMembers.map((member) => member._id);
-            tasks = await Task.find({ assignedTo: { $in: teamMemberIds } });
+            tasks = await Task.find({ ...query, assignedTo: { $in: teamMemberIds } });
         } else {
-            tasks = await Task.find({ assignedTo: req.user._id });
+            // Regular users can see only their tasks
+            tasks = await Task.find({ ...query, assignedTo: req.user._id });
         }
 
         res.status(200).json(tasks);

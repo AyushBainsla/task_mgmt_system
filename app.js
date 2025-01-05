@@ -9,12 +9,17 @@ const authRoutes = require('./routes/auth');
 const taskRoutes = require('./routes/task');
 const { authenticateJWT } = require('./middlewares/authMiddleware');
 const { roleBasedAccessControl } = require('./middlewares/rbacMiddleware');
+const redis = require('redis');
+const redisClient = redis.createClient();
+const rateLimit = require('express-rate-limit');
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+redisClient.connect().catch((err) => console.error('Redis connection error:', err));
+app.set('redisClient', redisClient); // This Make Redis client globally accessible
 
 // WebSocket Integration
 io.on('connection', (socket) => {
@@ -27,10 +32,18 @@ io.on('connection', (socket) => {
 
 app.set('io', io);
 
+
+const defaultLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests
+    message: 'Too many requests, please try again later.',
+});
+
 // Middleware
 app.use(express.json());
 app.use(morgan('dev'));
 app.use(cors());
+app.use(defaultLimiter);
 
 // Routes
 app.use('/api/v1/auth', authRoutes);

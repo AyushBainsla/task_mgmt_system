@@ -1,4 +1,8 @@
 const express = require('express');
+const cacheMiddleware = require('../middlewares/cacheMiddleware');
+const redisClient = require('../app').redisClient;
+const Task = require('../models/Task');
+
 const {
     createTask,
     getTasks,
@@ -24,5 +28,11 @@ router.get('/assigned', viewAssignedTasks);
 
 router.get('/analytics', getTaskAnalytics);
 router.get('/analytics/:userId', getUserTaskStatistics);
+
+router.get('/', cacheMiddleware, async (req, res) => {
+    const tasks = await Task.find(); 
+    redisClient.set(req.originalUrl, JSON.stringify(tasks), { EX: 60 }); // Cache for 60 seconds
+    res.json(tasks);
+});
 
 module.exports = router;
